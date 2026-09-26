@@ -87,8 +87,8 @@ export default function Home() {
   async function submitAuth() {
     if (!authEmail.trim() || !authPassword.trim() || (authMode==="signup" && !authName.trim())) return;
     setAuthLoading(true); setAuthError("");
-    const supabase = createClient();
     try {
+      const supabase = createClient();
       if (authMode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email: authEmail.trim(),
