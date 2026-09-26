@@ -9,6 +9,23 @@ import {
 
 type Item = { id:number; name:string; detail:string; status?:string; amount?:number };
 
+const PERMISSIONS = [
+  "CLIENTS_VIEW","CLIENTS_CREATE","CLIENTS_EDIT","CLIENTS_DELETE","PROSPECTS_VIEW","PROSPECTS_CREATE","PROSPECTS_EDIT","PROSPECTS_DELETE",
+  "PARTNERS_VIEW","PARTNERS_CREATE","PARTNERS_EDIT","PARTNERS_DELETE","PRODUCTS_VIEW","PRODUCTS_CREATE","PRODUCTS_EDIT","PRODUCTS_DELETE",
+  "SALES_VIEW","SALES_CREATE","SALES_EDIT","SALES_DELETE","TASKS_VIEW","TASKS_CREATE","TASKS_EDIT","TASKS_DELETE","STATISTICS_VIEW",
+  "MEMBERS_VIEW","MEMBERS_INVITE","MEMBERS_EDIT","MEMBERS_DELETE","COMPANY_SETTINGS_VIEW","COMPANY_SETTINGS_EDIT","BILLING_VIEW","BILLING_MANAGE","ACTIVITY_LOG_VIEW"
+] as const;
+const permissionGroups: Record<string,string[]> = {
+  Clients:["CLIENTS_VIEW","CLIENTS_CREATE","CLIENTS_EDIT","CLIENTS_DELETE"], Prospects:["PROSPECTS_VIEW","PROSPECTS_CREATE","PROSPECTS_EDIT","PROSPECTS_DELETE"],
+  Partenaires:["PARTNERS_VIEW","PARTNERS_CREATE","PARTNERS_EDIT","PARTNERS_DELETE"], Produits:["PRODUCTS_VIEW","PRODUCTS_CREATE","PRODUCTS_EDIT","PRODUCTS_DELETE"],
+  "Suivi commercial":["SALES_VIEW","SALES_CREATE","SALES_EDIT","SALES_DELETE"], Tâches:["TASKS_VIEW","TASKS_CREATE","TASKS_EDIT","TASKS_DELETE"],
+  Statistiques:["STATISTICS_VIEW"], Administration:["MEMBERS_VIEW","MEMBERS_INVITE","MEMBERS_EDIT","MEMBERS_DELETE","COMPANY_SETTINGS_VIEW","COMPANY_SETTINGS_EDIT","BILLING_VIEW","BILLING_MANAGE","ACTIVITY_LOG_VIEW"]
+};
+type AppRole = "SUPER_ADMIN"|"ADMIN_ENTREPRISE"|"MEMBRE";
+type Member = {id:number;name:string;email:string;role:AppRole;status:"Actif"|"Désactivé";lastActivity:string;joined:string;permissions:string[]};
+const roleDefaults: Record<AppRole,string[]> = {SUPER_ADMIN:[...PERMISSIONS],ADMIN_ENTREPRISE:[...PERMISSIONS],MEMBRE:["CLIENTS_VIEW","PROSPECTS_VIEW","PARTNERS_VIEW","PRODUCTS_VIEW","SALES_VIEW","TASKS_VIEW"]};
+
+
 const nav = [
   ["Dashboard", LayoutDashboard], ["Clients", Users], ["Prospects", Target],
   ["Suivi commercial", Target], ["Partenaires", Handshake], ["Produits", Package], ["Paiements", Wallet],
@@ -53,6 +70,33 @@ export default function Home() {
   const [compactMode,setCompactMode] = useState(false);
   const [twoFactor,setTwoFactor] = useState(false);
   const salesStages = ["Nouveau","Contacté","En négociation","Converti","Perdu"];
+  const [currentRole] = useState<AppRole>("ADMIN_ENTREPRISE");
+  const [members,setMembers] = useState<Member[]>([]);
+  const [memberModal,setMemberModal] = useState(false);
+  const [permissionMember,setPermissionMember] = useState<Member|null>(null);
+  const [memberForm,setMemberForm] = useState({name:"",email:"",role:"MEMBRE" as AppRole});
+  const [memberPermissions,setMemberPermissions] = useState<Record<number,string[]>>({});
+  const [adminQuery,setAdminQuery] = useState("");
+  const [adminFilter,setAdminFilter] = useState("Tous");
+  const [confirmDelete,setConfirmDelete] = useState<Member|null>(null);
+  const hasPermission = (p:string) => currentRole==="SUPER_ADMIN" || currentRole==="ADMIN_ENTREPRISE" || members.some(m=>m.email===authEmail && m.permissions.includes(p));
+  function inviteMember(){
+    if(!memberForm.name.trim() || !memberForm.email.trim()) return;
+    const m:Member={id:Date.now(),name:memberForm.name.trim(),email:memberForm.email.trim(),role:memberForm.role,status:"Actif",lastActivity:"Jamais",joined:new Date().toLocaleDateString("fr-FR"),permissions:[...(roleDefaults[memberForm.role]||[])]};
+    setMembers(x=>[...x,m]); setMemberPermissions(x=>({...x,[m.id]:m.permissions}));
+    setActivity(a=>[{id:Date.now(),title:"Invitation d'un membre",detail:m.email,time:"À l'instant",Icon:UserPlus},...a].slice(0,8));
+    setMemberModal(false); setMemberForm({name:"",email:"",role:"MEMBRE"});
+  }
+  function toggleMember(id:number){setMembers(x=>x.map(m=>m.id===id?{...m,status:m.status==="Actif"?"Désactivé":"Actif"}:m));}
+  function saveMemberPermissions(){
+    if(!permissionMember)return;
+    const perms=memberPermissions[permissionMember.id]||[];
+    setMembers(x=>x.map(m=>m.id===permissionMember.id?{...m,permissions:perms}:m));
+    setActivity(a=>[{id:Date.now(),title:"Permissions modifiées",detail:permissionMember.email,time:"À l'instant",Icon:ShieldCheck},...a].slice(0,8));
+    setPermissionMember(null);
+  }
+  const adminMembers=members.filter(m=>(m.name+" "+m.email+" "+m.role).toLowerCase().includes(adminQuery.toLowerCase())).filter(m=>adminFilter==="Tous"||m.status===adminFilter||m.role===adminFilter);
+
 
   const rows = data[active] || [];
   const filtered = useMemo(() => rows.filter(x =>
@@ -133,7 +177,18 @@ export default function Home() {
     <aside className={mobile ? "side open" : "side"}>
       <div className="brand"><div className="logo">D</div><div><b>DataFlow</b><small>Business OS</small></div><button className="close" onClick={()=>setMobile(false)}><X size={20}/></button></div>
       <div className="workspace"><span className="avatar">DF</span><div><b>Mon entreprise</b><small>Espace professionnel</small></div></div>
-      <nav>{nav.map(([label,Icon])=><button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setQuery("");setMobile(false)}}><Icon size={19}/><span>{label}</span></button>)}</nav>
+      <nav>
+        <div className="navSectionLabel">TABLEAU DE BORD</div>
+        <button className={active==="Dashboard"?"nav active":"nav"} onClick={()=>{setActive("Dashboard");setMobile(false)}}><LayoutDashboard size={19}/><span>Tableau de bord</span></button>
+        <div className="navSectionLabel">COMMERCIAL</div>
+        {[
+          ["Clients",Users,"CLIENTS_VIEW"],["Prospects",Target,"PROSPECTS_VIEW"],["Partenaires",Handshake,"PARTNERS_VIEW"],["Produits",Package,"PRODUCTS_VIEW"],["Suivi commercial",Target,"SALES_VIEW"],["Tâches",CheckCircle2,"TASKS_VIEW"],["Statistiques",BarChart3,"STATISTICS_VIEW"]
+        ].map(([label,Icon,perm]:any)=>hasPermission(perm)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setQuery("");setMobile(false)}}><Icon size={19}/><span>{label}</span></button>)}
+        <div className="navSectionLabel">ADMINISTRATION</div>
+        {[
+          ["Entreprise",Building2,"COMPANY_SETTINGS_VIEW"],["Membres & rôles",Users,"MEMBERS_VIEW"],["Permissions",ShieldCheck,"MEMBERS_EDIT"],["Abonnement & paiements",CreditCard,"BILLING_VIEW"],["Journal d'activité",Clock3,"ACTIVITY_LOG_VIEW"],["Sécurité",ShieldCheck,"COMPANY_SETTINGS_VIEW"],["Paramètres",Settings,"COMPANY_SETTINGS_VIEW"]
+        ].map(([label,Icon,perm]:any)=>hasPermission(perm)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setQuery("");setMobile(false)}}><Icon size={19}/><span>{label}</span></button>)}
+      </nav>
       <div className="sideBottom">
         <div className="secure"><ShieldCheck size={18}/><span>Compte sécurisé<br/><small>Données isolées</small></span></div>
         <button className="logout"><LogOut size={18}/>Déconnexion</button>
@@ -178,6 +233,11 @@ export default function Home() {
           </div>
         </div>}
 
+        {active==="Membres & rôles" && <div className="adminPage"><div className="adminToolbar"><div><p className="eyebrow">ADMINISTRATION</p><h2>Membres & rôles</h2><p className="muted">Gérez les accès de votre entreprise.</p></div><button className="primary" onClick={()=>setMemberModal(true)}><UserPlus size={17}/> Inviter un membre</button></div><div className="adminCards"><div className="card"><span>Membres</span><strong>{members.length}</strong></div><div className="card"><span>Actifs</span><strong>{members.filter(m=>m.status==="Actif").length}</strong></div><div className="card"><span>Désactivés</span><strong>{members.filter(m=>m.status==="Désactivé").length}</strong></div><div className="card"><span>Rôle</span><strong style={{fontSize:"14px"}}>Admin Entreprise</strong></div></div><div className="panel tablePanel"><div className="panelHead"><div><h2>Membres de l'entreprise</h2><p>Les membres restent limités à cet espace.</p></div><div className="adminFilters"><input value={adminQuery} onChange={e=>setAdminQuery(e.target.value)} placeholder="Rechercher..."/><select value={adminFilter} onChange={e=>setAdminFilter(e.target.value)}><option>Tous</option><option>Actif</option><option>Désactivé</option><option>MEMBRE</option><option>ADMIN_ENTREPRISE</option></select></div></div>{adminMembers.length===0?<div className="emptyInline">Aucun membre supplémentaire. Invitez votre premier membre.</div>:adminMembers.map(m=><div className="memberRow" key={m.id}><div><b>{m.name}</b><span>{m.email}</span></div><span className="roleBadge">{m.role==="ADMIN_ENTREPRISE"?"Admin Entreprise":"Membre"}</span><span className={m.status==="Actif"?"status activeStatus":"status"}>{m.status}</span><span className="memberMeta">{m.lastActivity}</span><span className="memberMeta">{m.joined}</span><div className="memberActions"><button className="iconBtn" onClick={()=>setPermissionMember(m)}><ShieldCheck size={16}/></button><button className="iconBtn" onClick={()=>toggleMember(m.id)}>{m.status==="Actif"?<Clock3 size={16}/>:<CheckCircle2 size={16}/>}</button><button className="iconBtn danger" onClick={()=>setConfirmDelete(m)}><Trash2 size={16}/></button></div></div>)}</div></div>}
+        {active==="Permissions" && <div className="adminPage"><div className="adminToolbar"><div><p className="eyebrow">ADMINISTRATION</p><h2>Permissions</h2><p className="muted">Permissions granulaires disponibles dans DataFlow.</p></div></div><div className="panel"><div className="permissionMatrix">{Object.entries(permissionGroups).map(([group,perms])=><div className="permissionGroup" key={group}><h3>{group}</h3><div className="permissionChecks">{perms.map(p=><label key={p}><input type="checkbox" readOnly/><span>{p.replace(/_/g," ")}</span></label>)}</div></div>)}</div></div></div>}
+        {active==="Journal d'activité" && <div className="adminPage"><div className="adminToolbar"><div><p className="eyebrow">ADMINISTRATION</p><h2>Journal d'activité</h2><p className="muted">Historique des actions de cet espace.</p></div></div><div className="panel"><div className="logFilters"><input placeholder="Utilisateur"/><select><option>Toutes les actions</option><option>Création</option><option>Modification</option><option>Suppression</option></select><input type="date"/><select><option>Tous les modules</option><option>Clients</option><option>Prospects</option><option>Administration</option></select></div>{activity.length===0?<div className="emptyInline">Aucune activité enregistrée.</div>:activity.map(x=><div className="logRow" key={x.id}><span className="logDot"><x.Icon size={14}/></span><div><b>{x.title}</b><span>{x.detail}</span></div><span className="logCompany">{companyName}</span><time>{x.time}</time></div>)}</div></div>}
+        {active==="Entreprise" && <div className="adminPage"><div className="adminToolbar"><div><p className="eyebrow">ADMINISTRATION</p><h2>Entreprise</h2><p className="muted">Informations de l'entreprise connectée.</p></div></div><div className="panel settingsGrid"><div><label className="settingsField">Nom de l'entreprise<input value={companyName} onChange={e=>setCompanyName(e.target.value)}/></label><label className="settingsField">Devise<select value={currency} onChange={e=>setCurrency(e.target.value)}><option>FCFA</option><option>EUR</option><option>USD</option></select></label></div><div className="securityStatus"><ShieldCheck size={18}/><div><b>Isolation entreprise</b><span>Les données doivent être filtrées par company_id côté serveur.</span></div></div></div></div>}
+        {active==="Sécurité" && <div className="adminPage"><div className="adminToolbar"><div><p className="eyebrow">ADMINISTRATION</p><h2>Sécurité</h2><p className="muted">Contrôles de sécurité de l'espace.</p></div></div><div className="settingsGrid"><div className="panel"><div className="securityStatus"><ShieldCheck size={18}/><div><b>Authentification renforcée</b><span>{twoFactor?"Activée":"Non activée"}</span></div><button className={twoFactor?"toggle on":"toggle"} onClick={()=>setTwoFactor(v=>!v)}><i/></button></div><div className="securityStatus"><CheckCircle2 size={18}/><div><b>Isolation des données</b><span>Vérification serveur requise avant toute opération.</span></div></div></div><div className="panel"><h2>Règles protégées</h2><div className="metricLine"><span>Dernier Admin non supprimable</span><b>Activé</b></div><div className="metricLine"><span>Admin limité à son entreprise</span><b>Activé</b></div><div className="metricLine"><span>Super Admin protégé</span><b>Activé</b></div></div></div></div>}
         {active==="Dashboard" && <>
           <div className="cards">
             {[
@@ -212,6 +272,9 @@ export default function Home() {
       </section>
     </main>
 
+    {memberModal && <div className="modalBackdrop" onClick={()=>setMemberModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modalHead"><div><h2>Inviter un membre</h2><p>Préparez une invitation à rejoindre l'entreprise.</p></div><button className="iconBtn" onClick={()=>setMemberModal(false)}><X size={18}/></button></div><label>Nom<input value={memberForm.name} onChange={e=>setMemberForm({...memberForm,name:e.target.value})}/></label><label style={{display:"block",marginTop:"12px"}}>Email<input type="email" value={memberForm.email} onChange={e=>setMemberForm({...memberForm,email:e.target.value})}/></label><label style={{display:"block",marginTop:"12px"}}>Rôle<select value={memberForm.role} onChange={e=>setMemberForm({...memberForm,role:e.target.value as AppRole})}><option value="MEMBRE">Membre</option><option value="ADMIN_ENTREPRISE">Admin Entreprise</option></select></label><div className="modalActions"><button className="secondary" onClick={()=>setMemberModal(false)}>Annuler</button><button className="primary" onClick={inviteMember}>Créer l'invitation</button></div></div></div>}
+    {permissionMember && <div className="modalBackdrop" onClick={()=>setPermissionMember(null)}><div className="modal permissionModal" onClick={e=>e.stopPropagation()}><div className="modalHead"><div><h2>Permissions de {permissionMember.name}</h2><p>{permissionMember.email}</p></div><button className="iconBtn" onClick={()=>setPermissionMember(null)}><X size={18}/></button></div><div className="permissionMatrix">{Object.entries(permissionGroups).map(([group,perms])=><div className="permissionGroup" key={group}><h3>{group}</h3>{perms.map(p=><label key={p}><input type="checkbox" checked={(memberPermissions[permissionMember.id]||[]).includes(p)} onChange={e=>setMemberPermissions(x=>({...x,[permissionMember.id]:e.target.checked?[...(x[permissionMember.id]||[]),p]:(x[permissionMember.id]||[]).filter(v=>v!==p)}))}/><span>{p.replace(/_/g," ")}</span></label>)}</div>)}</div><div className="modalActions"><button className="secondary" onClick={()=>setPermissionMember(null)}>Annuler</button><button className="primary" onClick={saveMemberPermissions}>Enregistrer</button></div></div></div>}
+    {confirmDelete && <div className="modalBackdrop" onClick={()=>setConfirmDelete(null)}><div className="modal" onClick={e=>e.stopPropagation()}><h2>Supprimer ce membre ?</h2><p>Cette action est définitive pour {confirmDelete.email}.</p><div className="modalActions"><button className="secondary" onClick={()=>setConfirmDelete(null)}>Annuler</button><button className="primary" onClick={()=>{setMembers(x=>x.filter(m=>m.id!==confirmDelete.id));setConfirmDelete(null);}}>Supprimer</button></div></div></div>}
     {modal && <div className="modalBackdrop" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modalHead"><div><h2>Ajouter {active.toLowerCase()}</h2><p>Les données seront enregistrées dans cet espace.</p></div><button className="iconBtn" onClick={()=>setModal(false)}><X size={18}/></button></div><label>Nom<input autoFocus value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder={active==="Clients"?"Nom du client":"Nom de l'élément"}/></label><div className="modalActions"><button className="secondary" onClick={()=>setModal(false)}>Annuler</button><button className="primary" onClick={addItem}><Plus size={16}/>Créer</button></div></div></div>}
   </div>
 }
