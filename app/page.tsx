@@ -41,6 +41,20 @@ const initialData: Record<string, Item[]> = {
 };
 
 export default function Home() {
+  const [view,setView] = useState<"landing"|"dashboard">("landing");
+  const [authMode,setAuthMode] = useState<"signup"|"login"|null>(null);
+  const [authName,setAuthName] = useState("");
+  const [authEmail,setAuthEmail] = useState("");
+  const [authPassword,setAuthPassword] = useState("");
+
+  function openAuth(mode:"signup"|"login") {
+    setAuthMode(mode); setAuthName(""); setAuthEmail(""); setAuthPassword("");
+  }
+  function submitAuth() {
+    if (!authEmail.trim() || !authPassword.trim() || (authMode==="signup" && !authName.trim())) return;
+    setAuthMode(null); setView("dashboard");
+  }
+
   const [active,setActive] = useState("Dashboard");
   const [mobile,setMobile] = useState(false);
   const [query,setQuery] = useState("");
@@ -61,6 +75,36 @@ export default function Home() {
   function removeItem(id:number) {
     setData(d => ({...d,[active]:d[active].filter(x=>x.id!==id)}));
   }
+
+  if (view === "landing") return <div className="landing">
+    <header className="landingHeader">
+      <div className="landingBrand"><div className="landingLogo">D</div><div><b>DataFlow</b><span>Business OS</span></div></div>
+      <nav className="landingNav"><a href="#fonctionnalites">Fonctionnalités</a><a href="#comment">Comment ça marche</a><a href="#securite">Sécurité</a></nav>
+      <div className="landingActions"><button className="loginBtn" onClick={()=>openAuth("login")}>Se connecter</button><button className="landingCta" onClick={()=>openAuth("signup")}>Créer un compte</button></div>
+    </header>
+    <main className="landingMain">
+      <section className="hero"><div className="heroCopy">
+        <div className="pill"><span/> Gestion commerciale simple et centralisée</div>
+        <h1>Gérez votre entreprise.<br/><em>Plus simplement.</em></h1>
+        <p>DataFlow réunit vos clients, prospects, partenaires, produits, paiements et statistiques dans un seul espace professionnel.</p>
+        <div className="heroButtons"><button className="heroPrimary" onClick={()=>openAuth("signup")}>Commencer gratuitement <ArrowUpRight size={17}/></button><button className="heroSecondary" onClick={()=>openAuth("login")}>J'ai déjà un compte</button></div>
+        <div className="trust"><ShieldCheck size={16}/> Données isolées · Essai gratuit · Accessible sur mobile</div>
+      </div><div className="heroVisual"><div className="dashWindow">
+        <div className="dashTop"><div className="miniDots"><i/><i/><i/></div><span>DataFlow Dashboard</span><b>Mon entreprise</b></div>
+        <div className="miniStats"><div><span>Clients</span><strong>128</strong><small>+12 ce mois</small></div><div><span>Prospects</span><strong>64</strong><small>+8 cette semaine</small></div><div><span>Paiements</span><strong>145K</strong><small>FCFA ce mois</small></div></div>
+        <div className="miniPanel"><div><b>Suivi commercial</b><span>Pipeline prospects</span></div><div className="miniBars"><i/><i/><i/><i/></div></div><div className="miniRows"><div/><div/><div/></div>
+      </div></div></section>
+      <section className="logosSection"><p>UNE SEULE PLATEFORME POUR VOTRE ACTIVITÉ</p><div><span>CLIENTS</span><span>PROSPECTS</span><span>PRODUITS</span><span>PAIEMENTS</span><span>STATISTIQUES</span></div></section>
+      <section id="fonctionnalites" className="featuresSection"><div className="sectionIntro"><p className="landingEyebrow">TOUT AU MÊME ENDROIT</p><h2>Les outils essentiels pour piloter votre activité</h2><p>Finissez avec les informations dispersées. DataFlow vous donne une vue claire de votre entreprise.</p></div>
+        <div className="featureGrid"><div className="featureCard"><span className="featureIcon"><Users size={20}/></span><h3>Clients</h3><p>Centralisez vos contacts et gardez une vision claire de chaque client.</p></div><div className="featureCard"><span className="featureIcon"><Target size={20}/></span><h3>Prospects</h3><p>Suivez chaque opportunité de la prise de contact jusqu'à la conversion.</p></div><div className="featureCard"><span className="featureIcon"><Wallet size={20}/></span><h3>Paiements</h3><p>Enregistrez vos paiements et suivez vos encaissements simplement.</p></div><div className="featureCard"><span className="featureIcon"><BarChart3 size={20}/></span><h3>Statistiques</h3><p>Visualisez les indicateurs importants pour votre activité.</p></div></div>
+      </section>
+      <section id="comment" className="stepsSection"><div className="sectionIntro"><p className="landingEyebrow">DÉMARRER EN QUELQUES MINUTES</p><h2>Simple du premier clic au dashboard</h2></div><div className="steps"><div><b>01</b><h3>Créez votre compte</h3><p>Inscrivez votre entreprise et commencez votre espace professionnel.</p></div><div><b>02</b><h3>Ajoutez vos données</h3><p>Clients, prospects, produits, partenaires et paiements.</p></div><div><b>03</b><h3>Pilotez votre activité</h3><p>Retrouvez vos informations et vos indicateurs depuis un seul dashboard.</p></div></div></section>
+      <section id="securite" className="securitySection"><div><span className="featureIcon"><ShieldCheck size={22}/></span><p className="landingEyebrow">ESPACE PROFESSIONNEL</p><h2>Vos données restent organisées dans votre espace.</h2><p>DataFlow est conçu pour séparer les données de chaque entreprise et proposer une expérience claire et professionnelle.</p></div><div className="securityCard"><ShieldCheck size={28}/><b>Données isolées</b><span>Votre espace professionnel est séparé des autres comptes.</span><CheckCircle2 size={18}/><b>Accès sécurisé</b><span>Connectez-vous à votre espace quand vous en avez besoin.</span></div></section>
+      <section className="finalCta"><p className="landingEyebrow">PRÊT À COMMENCER ?</p><h2>Votre activité mérite un espace organisé.</h2><p>Créez votre compte et découvrez DataFlow.</p><button className="heroPrimary" onClick={()=>openAuth("signup")}>Créer mon compte <ArrowUpRight size={17}/></button></section>
+    </main>
+    <footer className="landingFooter"><div className="landingBrand"><div className="landingLogo">D</div><div><b>DataFlow</b><span>Business OS</span></div></div><span>© 2026 DataFlow. Gestion commerciale.</span></footer>
+    {authMode && <div className="authBackdrop" onClick={()=>setAuthMode(null)}><div className="authCard" onClick={e=>e.stopPropagation()}><button className="authClose" onClick={()=>setAuthMode(null)}><X size={18}/></button><div className="landingLogo authLogo">D</div><h2>{authMode==="signup" ? "Créer votre compte" : "Bienvenue sur DataFlow"}</h2><p>{authMode==="signup" ? "Commencez votre espace professionnel." : "Connectez-vous à votre espace professionnel."}</p>{authMode==="signup" && <label>Nom de l'entreprise<input value={authName} onChange={e=>setAuthName(e.target.value)} placeholder="Mon entreprise"/></label>}<label>Email professionnel<input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="vous@entreprise.com"/></label><label>Mot de passe<input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="••••••••"/></label><button className="heroPrimary authSubmit" onClick={submitAuth}>{authMode==="signup" ? "Créer mon compte" : "Se connecter"} <ArrowUpRight size={16}/></button><button className="authSwitch" onClick={()=>setAuthMode(authMode==="signup"?"login":"signup")}>{authMode==="signup" ? "J'ai déjà un compte" : "Créer un nouveau compte"}</button></div></div>}
+  </div>;
 
   return <div className="app">
     {mobile && <div className="overlay" onClick={()=>setMobile(false)}/>}
