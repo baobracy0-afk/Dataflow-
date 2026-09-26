@@ -57,8 +57,9 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(async ({ data }) => {
       if (!mounted || !data.user) return;
       setAuthEmail(data.user.email || "");
       const { data: membership } = await supabase
@@ -76,7 +77,10 @@ export default function Home() {
         if (company?.name) setCompanyName(company.name);
         setView("dashboard");
       }
-    }).catch(() => {});
+      }).catch(() => {});
+    } catch {
+      // Keep the landing page usable even if Supabase environment variables are not configured yet.
+    }
     return () => { mounted = false; };
   }, []);
 
