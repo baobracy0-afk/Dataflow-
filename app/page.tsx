@@ -11,7 +11,7 @@ type Item = { id:number; name:string; detail:string; status?:string; amount?:num
 
 const nav = [
   ["Dashboard", LayoutDashboard], ["Clients", Users], ["Prospects", Target],
-  ["Partenaires", Handshake], ["Produits", Package], ["Paiements", Wallet],
+  ["Suivi commercial", Target], ["Partenaires", Handshake], ["Produits", Package], ["Paiements", Wallet],
   ["Statistiques", BarChart3], ["Paramètres", Settings],
 ] as const;
 
@@ -47,6 +47,7 @@ export default function Home() {
   const [name,setName] = useState("");
   const [activity,setActivity] = useState<any[]>([]);
   const [notificationsOpen,setNotificationsOpen] = useState(false);
+  const salesStages = ["Nouveau","Contacté","En négociation","Converti","Perdu"];
 
   const rows = data[active] || [];
   const filtered = useMemo(() => rows.filter(x =>
@@ -57,7 +58,8 @@ export default function Home() {
     if (!name.trim() || active === "Dashboard" || active === "Statistiques" || active === "Paramètres") return;
     const itemName = name.trim();
     const itemId = Date.now();
-    setData(d => ({...d,[active]:[...d[active],{id:itemId,name:itemName,detail:"Nouvel élément",status:active==="Paiements"?"En attente":"Actif",amount:active==="Paiements"?10000:undefined}]}));
+    const defaultStatus = active==="Prospects" ? "Nouveau" : active==="Paiements" ? "En attente" : "Actif";
+    setData(d => ({...d,[active]:[...d[active],{id:itemId,name:itemName,detail:"Nouvel élément",status:defaultStatus,amount:active==="Paiements"?10000:undefined}]}));
     const Icon = active==="Clients"?Users:active==="Prospects"?Target:active==="Partenaires"?Handshake:active==="Produits"?Package:CreditCard;
     const label = active==="Paiements" ? "Nouveau paiement enregistré" : `Nouveau ${active.toLowerCase().replace(/s$/,"")} ajouté`;
     setActivity(a => [{id:itemId,title:label,detail:itemName,time:"À l'instant",Icon},...a].slice(0,8));
@@ -65,6 +67,11 @@ export default function Home() {
   }
   function removeItem(id:number) {
     setData(d => ({...d,[active]:d[active].filter(x=>x.id!==id)}));
+  }
+  function updateProspectStage(id:number,status:string) {
+    setData(d => ({...d,Prospects:d.Prospects.map(x=>x.id===id?{...x,status}:x)}));
+    const prospect = data.Prospects.find(x=>x.id===id);
+    if (prospect) setActivity(a=>[{id:Date.now(),title:"Prospect mis à jour",detail:`${prospect.name} → ${status}`,time:"À l'instant",Icon:Target},...a].slice(0,8));
   }
   function exportData() {
     const csv = [["Nom","Détail","Statut","Montant"], ...rows.map(x=>[
@@ -140,6 +147,31 @@ export default function Home() {
           <div><p className="eyebrow">VUE D'ENSEMBLE</p><h1>{active}</h1><p className="muted">Gérez votre entreprise depuis un seul espace.</p></div>
           {!["Dashboard","Statistiques","Paramètres"].includes(active) && <button className="primary" onClick={()=>setModal(true)}><Plus size={18}/>Ajouter</button>}
         </div>
+
+        {active==="Suivi commercial" && <div>
+          <div className="cards">
+            {salesStages.map(stage=>{
+              const count=data.Prospects.filter(x=>x.status===stage).length;
+              const value=data.Prospects.filter(x=>x.status===stage).reduce((s,x)=>s+(x.amount||0),0);
+              return <div className="card" key={stage}><div className="cardTop"><span>{stage}</span><span className="cardIcon"><Target size={19}/></span></div><strong>{count}</strong><p><span className="green">{value.toLocaleString("fr-FR")} FCFA</span></p></div>;
+            })}
+          </div>
+          <div className="panel" style={{marginTop:"18px"}}>
+            <div className="panelHead"><div><h2>Pipeline commercial</h2><p>Faites avancer chaque prospect jusqu'à la conversion.</p></div><span className="miniBadge"><Target size={13}/> Suivi en temps réel</span></div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(150px,1fr))",gap:"12px",overflowX:"auto"}}>
+              {salesStages.map(stage=><div key={stage} style={{background:"#f8fafc",border:"1px solid #e5e7eb",borderRadius:"14px",padding:"12px",minHeight:"180px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}><b style={{fontSize:"13px"}}>{stage}</b><span style={{fontSize:"12px",color:"#64748b"}}>{data.Prospects.filter(x=>x.status===stage).length}</span></div>
+                {data.Prospects.filter(x=>x.status===stage).map(p=><div key={p.id} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:"10px",padding:"10px",marginBottom:"8px"}}>
+                  <b style={{display:"block",fontSize:"13px"}}>{p.name}</b><span style={{display:"block",fontSize:"12px",color:"#64748b",margin:"3px 0 8px"}}>{p.detail}</span>
+                  <select value={p.status} onChange={e=>updateProspectStage(p.id,e.target.value)} style={{width:"100%",fontSize:"12px",padding:"6px",border:"1px solid #dbe3ec",borderRadius:"7px",background:"#fff"}}>
+                    {salesStages.map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>)}
+                {!data.Prospects.filter(x=>x.status===stage).length && <span style={{fontSize:"12px",color:"#94a3b8"}}>Aucun prospect</span>}
+              </div>)}
+            </div>
+          </div>
+        </div>}
 
         {active==="Dashboard" && <>
           <div className="cards">
