@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "../lib/supabase/client";
 import {
   LayoutDashboard, Users, Target, Handshake, Package, Wallet, BarChart3,
   Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck,
@@ -46,14 +47,86 @@ export default function Home() {
   const [authName,setAuthName] = useState("");
   const [authEmail,setAuthEmail] = useState("");
   const [authPassword,setAuthPassword] = useState("");
+  const [authError,setAuthError] = useState("");
+  const [authLoading,setAuthLoading] = useState(false);
   const [faqOpen,setFaqOpen] = useState<number | null>(0);
 
   function openAuth(mode:"signup"|"login") {
-    setAuthMode(mode); setAuthName(""); setAuthEmail(""); setAuthPassword("");
+    setAuthMode(mode); setAuthName(""); setAuthEmail(""); setAuthPassword(""); setAuthError("");
   }
-  function submitAuth() {
+
+  useEffect(() => {
+    let mounted = true;
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!mounted || !data.user) return;
+      setAuthEmail(data.user.email || "");
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id, companies(name)")
+        .eq("user_id", data.user.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      if (!mounted) return;
+      if (membership) {
+        const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
+        if (company?.name) setCompanyName(company.name);
+        setView("dashboard");
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  async function submitAuth() {
     if (!authEmail.trim() || !authPassword.trim() || (authMode==="signup" && !authName.trim())) return;
-    setAuthMode(null); setView("dashboard");
+    setAuthLoading(true); setAuthError("");
+    const supabase = createClient();
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword,
+          options: { data: { full_name: authName.trim() } }
+        });
+        if (error) throw error;
+        if (!data.user) throw new Error("Création du compte impossible.");
+        if (!data.session) {
+          setAuthError("Compte créé. Vérifiez votre email pour confirmer votre compte, puis connectez-vous.");
+          return;
+        }
+        const { data: companyId, error: companyError } = await supabase.rpc("create_company_for_current_user", { p_company_name: authName.trim() });
+        if (companyError) throw companyError;
+        setCompanyName(authName.trim());
+        setAuthMode(null); setView("dashboard");
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
+        if (error) throw error;
+        if (!data.user) throw new Error("Connexion impossible.");
+        const { data: membership, error: membershipError } = await supabase
+          .from("company_members")
+          .select("company_id, companies(name)")
+          .eq("user_id", data.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+        if (membershipError) throw membershipError;
+        if (!membership) throw new Error("Aucune entreprise active n'est associée à ce compte.");
+        const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
+        if (company?.name) setCompanyName(company.name);
+        setAuthMode(null); setView("dashboard");
+      }
+    } catch (error: any) {
+      setAuthError(error?.message || "Une erreur d'authentification est survenue.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function logout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setView("landing"); setActive("Dashboard"); setAuthMode(null);
   }
 
   const [active,setActive] = useState("Dashboard");
@@ -170,7 +243,7 @@ export default function Home() {
       <section className="finalCta"><p className="landingEyebrow">PRÊT À COMMENCER ?</p><h2>Votre activité mérite un espace organisé.</h2><p>Créez votre compte et découvrez DataFlow.</p><button className="heroPrimary" onClick={()=>openAuth("signup")}>Créer mon compte <ArrowUpRight size={17}/></button></section>
     </main>
     <footer className="landingFooter"><div className="landingBrand"><div className="landingLogo">D</div><div><b>DataFlow</b><span>Business OS</span></div></div><span>© 2026 DataFlow. Gestion commerciale.</span></footer>
-    {authMode && <div className="authBackdrop" onClick={()=>setAuthMode(null)}><div className="authCard" onClick={e=>e.stopPropagation()}><button className="authClose" onClick={()=>setAuthMode(null)}><X size={18}/></button><div className="landingLogo authLogo">D</div><h2>{authMode==="signup" ? "Créer votre compte" : "Bienvenue sur DataFlow"}</h2><p>{authMode==="signup" ? "Commencez votre espace professionnel." : "Connectez-vous à votre espace professionnel."}</p>{authMode==="signup" && <label>Nom de l'entreprise<input value={authName} onChange={e=>setAuthName(e.target.value)} placeholder="Mon entreprise"/></label>}<label>Email professionnel<input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="vous@entreprise.com"/></label><label>Mot de passe<input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="••••••••"/></label><button className="heroPrimary authSubmit" onClick={submitAuth}>{authMode==="signup" ? "Créer mon compte" : "Se connecter"} <ArrowUpRight size={16}/></button><button className="authSwitch" onClick={()=>setAuthMode(authMode==="signup"?"login":"signup")}>{authMode==="signup" ? "J'ai déjà un compte" : "Créer un nouveau compte"}</button></div></div>}
+    {authMode && <div className="authBackdrop" onClick={()=>setAuthMode(null)}><div className="authCard" onClick={e=>e.stopPropagation()}><button className="authClose" onClick={()=>setAuthMode(null)}><X size={18}/></button><div className="landingLogo authLogo">D</div><h2>{authMode==="signup" ? "Créer votre compte" : "Bienvenue sur DataFlow"}</h2><p>{authMode==="signup" ? "Commencez votre espace professionnel." : "Connectez-vous à votre espace professionnel."}</p>{authMode==="signup" && <label>Nom de l'entreprise<input value={authName} onChange={e=>setAuthName(e.target.value)} placeholder="Mon entreprise"/></label>}<label>Email professionnel<input type="email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} placeholder="vous@entreprise.com"/></label><label>Mot de passe<input type="password" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} placeholder="••••••••"/></label><button className="heroPrimary authSubmit" onClick={submitAuth} disabled={authLoading}>{authLoading ? "Connexion..." : authMode==="signup" ? "Créer mon compte" : "Se connecter"} <ArrowUpRight size={16}/></button>{authError && <div style={{marginTop:"10px",padding:"10px 12px",borderRadius:"10px",background:"#fff1f2",color:"#be123c",fontSize:"13px"}}>{authError}</div>}<button className="authSwitch" onClick={()=>setAuthMode(authMode==="signup"?"login":"signup")}>{authMode==="signup" ? "J'ai déjà un compte" : "Créer un nouveau compte"}</button></div></div>}
   </div>;
 
   return <div className="app">
@@ -192,7 +265,7 @@ export default function Home() {
       </nav>
       <div className="sideBottom">
         <div className="secure"><ShieldCheck size={18}/><span>Compte sécurisé<br/><small>Données isolées</small></span></div>
-        <button className="logout"><LogOut size={18}/>Déconnexion</button>
+        <button className="logout" onClick={logout}><LogOut size={18}/>Déconnexion</button>
       </div>
     </aside>
 
