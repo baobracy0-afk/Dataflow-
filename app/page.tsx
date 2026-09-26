@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   LayoutDashboard, Users, Target, Handshake, Package, Wallet, BarChart3,
-  Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, AlertCircle, Loader2, Building2,
-  Trash2, Pencil, CheckCircle2, Clock3, CreditCard, UserPlus, Download
+  Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck,
+  Trash2, Pencil, CheckCircle2, Clock3, CreditCard, UserPlus, Building2, Download
 } from "lucide-react";
 
 type Item = { id:number; name:string; detail:string; status?:string; amount?:number };
@@ -26,19 +26,11 @@ type Member = {id:number;name:string;email:string;role:AppRole;status:"Actif"|"D
 const roleDefaults: Record<AppRole,string[]> = {SUPER_ADMIN:[...PERMISSIONS],ADMIN_ENTREPRISE:[...PERMISSIONS],MEMBRE:["CLIENTS_VIEW","PROSPECTS_VIEW","PARTNERS_VIEW","PRODUCTS_VIEW","SALES_VIEW","TASKS_VIEW"]};
 
 
-const routeMap: Record<string,string> = {
-  "Dashboard":"/dashboard","Clients":"/clients","Prospects":"/prospects","Partenaires":"/partenaires",
-  "Produits":"/produits","Paiements":"/paiements","Statistiques":"/statistiques","Tâches":"/taches",
-  "Suivi commercial":"/suivi-commercial","Entreprise":"/administration/entreprise","Membres & rôles":"/administration/membres",
-  "Permissions":"/administration/permissions","Abonnement & paiements":"/administration/abonnement",
-  "Journal d'activité":"/administration/journal","Sécurité":"/administration/securite","Paramètres":"/parametres",
-  "Administration":"/administration"
-};
-const pathToLabel = (path:string) => {
-  const clean=path.replace(/\\/$/,"") || "/";
-  const found=Object.entries(routeMap).find(([,p])=>p===clean);
-  return found?.[0] || (clean.startsWith("/administration/") ? "Administration" : "Dashboard");
-};
+const nav = [
+  ["Dashboard", LayoutDashboard], ["Clients", Users], ["Prospects", Target],
+  ["Suivi commercial", Target], ["Partenaires", Handshake], ["Produits", Package], ["Paiements", Wallet],
+  ["Statistiques", BarChart3], ["Paramètres", Settings],
+] as const;
 
 const initialData: Record<string, Item[]> = {
   Clients: [],
@@ -61,27 +53,11 @@ export default function Home() {
   }
   function submitAuth() {
     if (!authEmail.trim() || !authPassword.trim() || (authMode==="signup" && !authName.trim())) return;
-    setAuthMode(null); setView("dashboard"); window.history.pushState({label:"Dashboard"},"","/dashboard"); setActive("Dashboard");
+    setAuthMode(null); setView("dashboard");
   }
 
   const [active,setActive] = useState("Dashboard");
   const [mobile,setMobile] = useState(false);
-  const [sidebarCollapsed,setSidebarCollapsed] = useState(false);
-  const [navSearch,setNavSearch] = useState("");
-  const [navLoading,setNavLoading] = useState(false);
-  const [navError,setNavError] = useState("");
-  const [expanded,setExpanded] = useState({commercial:true,administration:true});
-  useEffect(()=>{
-    const sync=()=>{ const label=pathToLabel(window.location.pathname); setActive(label); if(window.location.pathname!=="/") setView("dashboard"); };
-    sync(); window.addEventListener("popstate",sync); return()=>window.removeEventListener("popstate",sync);
-  },[]);
-  function navigate(label:string){
-    const path=routeMap[label] || "/dashboard";
-    setNavError(""); setNavLoading(true);
-    window.history.pushState({label},"",path);
-    setActive(label); setQuery(""); setMobile(false);
-    window.setTimeout(()=>setNavLoading(false),180);
-  }
   const [query,setQuery] = useState("");
   const [data,setData] = useState(initialData);
   const [modal,setModal] = useState(false);
@@ -105,14 +81,6 @@ export default function Home() {
   const [adminFilter,setAdminFilter] = useState("Tous");
   const [confirmDelete,setConfirmDelete] = useState<Member|null>(null);
   const hasPermission = (p:string) => currentRole==="SUPER_ADMIN" || currentRole==="ADMIN_ENTREPRISE" || members.some(m=>m.email===authEmail && m.permissions.includes(p));
-  const permissionForLabel:Record<string,string> = {
-    Clients:"CLIENTS_VIEW",Prospects:"PROSPECTS_VIEW",Partenaires:"PARTNERS_VIEW",Produits:"PRODUCTS_VIEW",
-    "Suivi commercial":"SALES_VIEW",Tâches:"TASKS_VIEW",Statistiques:"STATISTICS_VIEW",Paiements:"BILLING_VIEW",
-    "Entreprise":"COMPANY_SETTINGS_VIEW","Membres & rôles":"MEMBERS_VIEW","Permissions":"MEMBERS_EDIT",
-    "Abonnement & paiements":"BILLING_VIEW","Journal d'activité":"ACTIVITY_LOG_VIEW","Sécurité":"COMPANY_SETTINGS_VIEW",
-    Paramètres:"COMPANY_SETTINGS_VIEW",Administration:"MEMBERS_VIEW"
-  };
-  function canNavigate(label:string){ const p=permissionForLabel[label]; return !p || hasPermission(p); }
   function inviteMember(){
     if(!memberForm.name.trim() || !memberForm.email.trim()) return;
     const m:Member={id:Date.now(),name:memberForm.name.trim(),email:memberForm.email.trim(),role:memberForm.role,status:"Actif",lastActivity:"Jamais",joined:new Date().toLocaleDateString("fr-FR"),permissions:[...(roleDefaults[memberForm.role]||[])]};
@@ -207,41 +175,32 @@ export default function Home() {
 
   return <div className="app">
     {mobile && <div className="overlay" onClick={()=>setMobile(false)}/>}
-    <aside className={`side ${mobile?"open":""} ${sidebarCollapsed?"collapsed":""}`}>
-      <div className="brand"><div className="logo">D</div>{!sidebarCollapsed&&<div><b>DataFlow</b><small>Business OS</small></div>}<button className="close" onClick={()=>setMobile(false)}><X size={20}/></button></div>
-      <button className="collapseNav" onClick={()=>setSidebarCollapsed(v=>!v)} title={sidebarCollapsed?"Développer":"Réduire"}>{sidebarCollapsed?<ChevronRight size={18}/>:<ChevronLeft size={18}/>}</button>
-      <div className="workspace"><span className="avatar">DF</span>{!sidebarCollapsed&&<div><b>{companyName}</b><small>Espace professionnel</small></div>}</div>
-      <div className="navSearch"><Search size={16}/>{!sidebarCollapsed&&<input value={navSearch} onChange={e=>setNavSearch(e.target.value)} placeholder="Rechercher un menu…"/>}</div>
+    <aside className={mobile ? "side open" : "side"}>
+      <div className="brand"><div className="logo">D</div><div><b>DataFlow</b><small>Business OS</small></div><button className="close" onClick={()=>setMobile(false)}><X size={20}/></button></div>
+      <div className="workspace"><span className="avatar">DF</span><div><b>Mon entreprise</b><small>Espace professionnel</small></div></div>
       <nav>
         <div className="navSectionLabel">TABLEAU DE BORD</div>
-        <button className={active==="Dashboard"?"nav active":"nav"} onClick={()=>navigate("Dashboard")}><LayoutDashboard size={19}/>{!sidebarCollapsed&&<span>Tableau de bord</span>}</button>
-        <button className={active==="Administration"?"nav active":"nav"} onClick={()=>navigate("Administration")}><ShieldCheck size={19}/>{!sidebarCollapsed&&<span>Administration</span>}</button>
-        <button className={active==="Paramètres"?"nav active":"nav"} onClick={()=>navigate("Paramètres")}><Settings size={19}/>{!sidebarCollapsed&&<span>Paramètres</span>}</button>
-        <button className="navSectionToggle" onClick={()=>setExpanded(v=>({...v,commercial:!v.commercial}))}><span>COMMERCIAL</span>{!sidebarCollapsed&&(expanded.commercial?<ChevronDown size={15}/>:<ChevronRight size={15}/>)}</button>
-        {expanded.commercial && [
-          ["Clients",Users,"CLIENTS_VIEW"],["Prospects",Target,"PROSPECTS_VIEW"],["Partenaires",Handshake,"PARTNERS_VIEW"],["Produits",Package,"PRODUCTS_VIEW"],
-          ["Paiements",Wallet,"BILLING_VIEW"],["Suivi commercial",Target,"SALES_VIEW"],["Tâches",CheckCircle2,"TASKS_VIEW"],["Statistiques",BarChart3,"STATISTICS_VIEW"]
-        ].filter(([label])=>!navSearch || String(label).toLowerCase().includes(navSearch.toLowerCase())).map(([label,Icon,perm]:any)=>canNavigate(label)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>navigate(label)}><Icon size={19}/>{!sidebarCollapsed&&<span>{label}</span>}</button>)}
-        <button className="navSectionToggle" onClick={()=>setExpanded(v=>({...v,administration:!v.administration}))}><span>ADMINISTRATION</span>{!sidebarCollapsed&&(expanded.administration?<ChevronDown size={15}/>:<ChevronRight size={15}/>)}</button>
-        {expanded.administration && [
-          ["Entreprise",Building2,"COMPANY_SETTINGS_VIEW"],["Membres & rôles",Users,"MEMBERS_VIEW"],["Permissions",ShieldCheck,"MEMBERS_EDIT"],
-          ["Abonnement & paiements",CreditCard,"BILLING_VIEW"],["Journal d'activité",Clock3,"ACTIVITY_LOG_VIEW"],["Sécurité",ShieldCheck,"COMPANY_SETTINGS_VIEW"]
-        ].filter(([label])=>!navSearch || String(label).toLowerCase().includes(navSearch.toLowerCase())).map(([label,Icon,perm]:any)=>canNavigate(label)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>navigate(label)}><Icon size={19}/>{!sidebarCollapsed&&<span>{label}</span>}</button>)}
+        <button className={active==="Dashboard"?"nav active":"nav"} onClick={()=>{setActive("Dashboard");setMobile(false)}}><LayoutDashboard size={19}/><span>Tableau de bord</span></button>
+        <div className="navSectionLabel">COMMERCIAL</div>
+        {[
+          ["Clients",Users,"CLIENTS_VIEW"],["Prospects",Target,"PROSPECTS_VIEW"],["Partenaires",Handshake,"PARTNERS_VIEW"],["Produits",Package,"PRODUCTS_VIEW"],["Suivi commercial",Target,"SALES_VIEW"],["Tâches",CheckCircle2,"TASKS_VIEW"],["Statistiques",BarChart3,"STATISTICS_VIEW"]
+        ].map(([label,Icon,perm]:any)=>hasPermission(perm)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setQuery("");setMobile(false)}}><Icon size={19}/><span>{label}</span></button>)}
+        <div className="navSectionLabel">ADMINISTRATION</div>
+        {[
+          ["Entreprise",Building2,"COMPANY_SETTINGS_VIEW"],["Membres & rôles",Users,"MEMBERS_VIEW"],["Permissions",ShieldCheck,"MEMBERS_EDIT"],["Abonnement & paiements",CreditCard,"BILLING_VIEW"],["Journal d'activité",Clock3,"ACTIVITY_LOG_VIEW"],["Sécurité",ShieldCheck,"COMPANY_SETTINGS_VIEW"],["Paramètres",Settings,"COMPANY_SETTINGS_VIEW"]
+        ].map(([label,Icon,perm]:any)=>hasPermission(perm)&&<button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setQuery("");setMobile(false)}}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
       <div className="sideBottom">
-        {!sidebarCollapsed&&<div className="secure"><ShieldCheck size={18}/><span>Compte sécurisé<br/><small>Données isolées</small></span></div>}
-        <button className="logout" onClick={()=>{setView("landing");setActive("Dashboard");window.history.pushState({label:"Login"},"","/");}}><LogOut size={18}/>{!sidebarCollapsed&&"Déconnexion"}</button>
+        <div className="secure"><ShieldCheck size={18}/><span>Compte sécurisé<br/><small>Données isolées</small></span></div>
+        <button className="logout"><LogOut size={18}/>Déconnexion</button>
       </div>
     </aside>
 
     <main>
       <header>
         <button className="hamb" onClick={()=>setMobile(true)}><Menu/></button>
-        <div className="breadcrumbs"><button onClick={()=>navigate("Dashboard")}><HomeIcon size={15}/></button><ChevronRight size={14}/><span>DataFlow</span><ChevronRight size={14}/><b>{active}</b></div>
         <div className="search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher dans DataFlow..."/></div>
-        {navLoading && <div className="navLoading"><Loader2 size={16}/> Chargement…</div>}
-      {navError && <div className="navError"><AlertCircle size={16}/> {navError}</div>}
-      <div className="headActions"><div style={{position:"relative"}}><button className="icon" onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={19}/>{activity.length>0&&<i/>}</button>{notificationsOpen&&<div style={{position:"absolute",right:0,top:"48px",width:"300px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:"14px",boxShadow:"0 18px 45px rgba(15,23,42,.12)",padding:"12px",zIndex:50}}><b style={{display:"block",marginBottom:"8px"}}>Notifications</b>{activity.length===0?<span style={{fontSize:"13px",color:"#64748b"}}>Aucune nouvelle notification.</span>:activity.slice(0,5).map((x:any)=><div key={x.id} style={{padding:"9px 0",borderTop:"1px solid #f1f5f9",fontSize:"13px"}}><b>{x.title}</b><span style={{display:"block",color:"#64748b"}}>{x.detail} · {x.time}</span></div>)}</div>}</div><div className="profile"><span className="avatar">BA</span><div><b>Administrateur</b><small>ADMIN</small></div></div></div>
+        <div className="headActions"><div style={{position:"relative"}}><button className="icon" onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={19}/>{activity.length>0&&<i/>}</button>{notificationsOpen&&<div style={{position:"absolute",right:0,top:"48px",width:"300px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:"14px",boxShadow:"0 18px 45px rgba(15,23,42,.12)",padding:"12px",zIndex:50}}><b style={{display:"block",marginBottom:"8px"}}>Notifications</b>{activity.length===0?<span style={{fontSize:"13px",color:"#64748b"}}>Aucune nouvelle notification.</span>:activity.slice(0,5).map((x:any)=><div key={x.id} style={{padding:"9px 0",borderTop:"1px solid #f1f5f9",fontSize:"13px"}}><b>{x.title}</b><span style={{display:"block",color:"#64748b"}}>{x.detail} · {x.time}</span></div>)}</div>}</div><div className="profile"><span className="avatar">BA</span><div><b>Administrateur</b><small>ADMIN</small></div></div></div>
       </header>
 
       <section className="content">
