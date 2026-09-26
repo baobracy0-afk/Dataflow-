@@ -62,6 +62,12 @@ export default function Home() {
   const [data,setData] = useState(initialData);
   const [modal,setModal] = useState(false);
   const [name,setName] = useState("");
+  const [activity,setActivity] = useState([
+    {id:1,title:"Nouveau client ajouté",detail:"Hôtel Ledger",time:"Il y a 12 min",Icon:UserPlus},
+    {id:2,title:"Prospect déplacé",detail:"Restaurant La Palmeraie",time:"Il y a 38 min",Icon:Target},
+    {id:3,title:"Paiement enregistré",detail:"25 000 FCFA",time:"Il y a 1 h",Icon:CreditCard},
+    {id:4,title:"Produit ajouté",detail:"Pack Premium",time:"Il y a 2 h",Icon:Package},
+  ]);
 
   const rows = data[active] || [];
   const filtered = useMemo(() => rows.filter(x =>
@@ -70,7 +76,12 @@ export default function Home() {
 
   function addItem() {
     if (!name.trim() || active === "Dashboard" || active === "Statistiques" || active === "Paramètres") return;
-    setData(d => ({...d,[active]:[...d[active],{id:Date.now(),name:name.trim(),detail:"Nouvel élément",status:active==="Paiements"?"En attente":"Actif",amount:active==="Paiements"?10000:undefined}]}));
+    const itemName = name.trim();
+    const itemId = Date.now();
+    setData(d => ({...d,[active]:[...d[active],{id:itemId,name:itemName,detail:"Nouvel élément",status:active==="Paiements"?"En attente":"Actif",amount:active==="Paiements"?10000:undefined}]}));
+    const Icon = active==="Clients"?Users:active==="Prospects"?Target:active==="Partenaires"?Handshake:active==="Produits"?Package:CreditCard;
+    const label = active==="Paiements" ? "Nouveau paiement enregistré" : `Nouveau ${active.toLowerCase().replace(/s$/,"")} ajouté`;
+    setActivity(a => [{id:itemId,title:label,detail:itemName,time:"À l'instant",Icon},...a].slice(0,8));
     setName(""); setModal(false);
   }
   function removeItem(id:number) {
@@ -142,13 +153,15 @@ export default function Home() {
         {active==="Dashboard" && <>
           <div className="cards">
             {[
-              ["Clients","128","+12 ce mois",Users],["Prospects","64","+8 cette semaine",Target],
-              ["Partenaires","23","+3 ce mois",Handshake],["Produits","47","5 à faible stock",Package]
-            ].map(([t,v,s,Icon]:any)=><div className="card" key={t}><div className="cardTop"><span>{t}</span><span className="cardIcon"><Icon size={19}/></span></div><strong>{v}</strong><p><span className={String(s).includes("faible")?"orange":"green"}>{s}</span></p></div>)}
+              ["Clients",data.Clients.length,String(data.Clients.length)+" client(s)",Users],
+              ["Prospects",data.Prospects.length,String(data.Prospects.length)+" prospect(s)",Target],
+              ["Partenaires",data.Partenaires.length,String(data.Partenaires.length)+" partenaire(s)",Handshake],
+              ["Produits",data.Produits.length,String(data.Produits.length)+" produit(s)",Package]
+            ].map(([t,v,s,Icon]:any)=><div className="card" key={t}><div className="cardTop"><span>{t}</span><span className="cardIcon"><Icon size={19}/></span></div><strong>{v}</strong><p><span className="green">{s}</span></p></div>)}
           </div>
           <div className="grid">
             <div className="panel"><div className="panelHead"><div><h2>Activité récente</h2><p>Dernières actions de votre espace</p></div></div>
-              {[["Nouveau client ajouté","Hôtel Ledger","Il y a 12 min",UserPlus],["Prospect déplacé","Restaurant La Palmeraie","Il y a 38 min",Target],["Paiement enregistré","25 000 FCFA","Il y a 1 h",CreditCard],["Produit ajouté","Pack Premium","Il y a 2 h",Package]].map(([a,b,c,Icon]:any,i)=><div className="row" key={i}><div className="dot"><Icon size={14}/></div><div><b>{a}</b><span>{b}</span></div><time>{c}</time></div>)}
+              {activity.map((x:any)=><div className="row" key={x.id}><div className="dot"><x.Icon size={14}/></div><div><b>{x.title}</b><span>{x.detail}</span></div><time>{x.time}</time></div>)}
             </div>
             <div className="panel"><div className="panelHead"><div><h2>Suivi commercial</h2><p>Pipeline prospects</p></div></div><div className="bars">{[["Nouveaux",28,"80%"],["Contactés",19,"55%"],["En négociation",11,"38%"],["Convertis",6,"22%"]].map(x=><div key={x[0] as string}><span>{x[0]}</span><b>{x[1]}</b><em style={{width:x[2] as string}}/></div>)}</div></div>
           </div>
