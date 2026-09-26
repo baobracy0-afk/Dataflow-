@@ -46,6 +46,7 @@ export default function Home() {
   const [authName,setAuthName] = useState("");
   const [authEmail,setAuthEmail] = useState("");
   const [authPassword,setAuthPassword] = useState("");
+  const [faqOpen,setFaqOpen] = useState<number | null>(0);
 
   function openAuth(mode:"signup"|"login") {
     setAuthMode(mode); setAuthName(""); setAuthEmail(""); setAuthPassword("");
@@ -79,7 +80,7 @@ export default function Home() {
   if (view === "landing") return <div className="landing">
     <header className="landingHeader">
       <div className="landingBrand"><div className="landingLogo">D</div><div><b>DataFlow</b><span>Business OS</span></div></div>
-      <nav className="landingNav"><a href="#fonctionnalites">Fonctionnalités</a><a href="#comment">Comment ça marche</a><a href="#securite">Sécurité</a></nav>
+      <nav className="landingNav"><a href="#fonctionnalites">Fonctionnalités</a><a href="#comment">Comment ça marche</a><a href="#securite">Sécurité</a><a href="#faq">FAQ</a></nav>
       <div className="landingActions"><button className="loginBtn" onClick={()=>openAuth("login")}>Se connecter</button><button className="landingCta" onClick={()=>openAuth("signup")}>Créer un compte</button></div>
     </header>
     <main className="landingMain">
@@ -100,6 +101,13 @@ export default function Home() {
       </section>
       <section id="comment" className="stepsSection"><div className="sectionIntro"><p className="landingEyebrow">DÉMARRER EN QUELQUES MINUTES</p><h2>Simple du premier clic au dashboard</h2></div><div className="steps"><div><b>01</b><h3>Créez votre compte</h3><p>Inscrivez votre entreprise et commencez votre espace professionnel.</p></div><div><b>02</b><h3>Ajoutez vos données</h3><p>Clients, prospects, produits, partenaires et paiements.</p></div><div><b>03</b><h3>Pilotez votre activité</h3><p>Retrouvez vos informations et vos indicateurs depuis un seul dashboard.</p></div></div></section>
       <section id="securite" className="securitySection"><div><span className="featureIcon"><ShieldCheck size={22}/></span><p className="landingEyebrow">ESPACE PROFESSIONNEL</p><h2>Vos données restent organisées dans votre espace.</h2><p>DataFlow est conçu pour séparer les données de chaque entreprise et proposer une expérience claire et professionnelle.</p></div><div className="securityCard"><ShieldCheck size={28}/><b>Données isolées</b><span>Votre espace professionnel est séparé des autres comptes.</span><CheckCircle2 size={18}/><b>Accès sécurisé</b><span>Connectez-vous à votre espace quand vous en avez besoin.</span></div></section>
+      <section id="faq" className="faqSection"><div className="sectionIntro"><p className="landingEyebrow">FAQ</p><h2>Questions fréquentes</h2><p>Tout ce qu'il faut savoir avant de commencer avec DataFlow.</p></div><div className="faqList">{[
+        ["Qu'est-ce que DataFlow ?","DataFlow est un espace professionnel qui centralise la gestion des clients, prospects, partenaires, produits, paiements et statistiques de votre entreprise."],
+        ["Puis-je essayer DataFlow gratuitement ?","Oui. La landing page présente un essai gratuit de 7 jours pour découvrir votre espace professionnel."],
+        ["Comment créer mon compte ?","Cliquez sur « Créer un compte » ou « Commencer gratuitement », puis renseignez le nom de votre entreprise, votre email et votre mot de passe."],
+        ["Mes données sont-elles séparées des autres entreprises ?","DataFlow est conçu autour d'espaces professionnels séparés afin d'organiser les données de chaque entreprise indépendamment."],
+        ["Puis-je utiliser DataFlow sur téléphone ?","Oui. L'interface est responsive et pensée pour être utilisable sur mobile, tablette et ordinateur."]
+      ].map(([q,a],i)=><div className={faqOpen===i?"faqItem open":"faqItem"} key={q}><button onClick={()=>setFaqOpen(faqOpen===i?null:i)}><span>{q}</span><span className="faqPlus">{faqOpen===i?"−":"+"}</span></button>{faqOpen===i&&<p>{a}</p>}</div>)}</div></section>
       <section className="finalCta"><p className="landingEyebrow">PRÊT À COMMENCER ?</p><h2>Votre activité mérite un espace organisé.</h2><p>Créez votre compte et découvrez DataFlow.</p><button className="heroPrimary" onClick={()=>openAuth("signup")}>Créer mon compte <ArrowUpRight size={17}/></button></section>
     </main>
     <footer className="landingFooter"><div className="landingBrand"><div className="landingLogo">D</div><div><b>DataFlow</b><span>Business OS</span></div></div><span>© 2026 DataFlow. Gestion commerciale.</span></footer>
