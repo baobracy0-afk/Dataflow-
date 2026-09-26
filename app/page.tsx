@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, Users, Target, Handshake, Package, Wallet, BarChart3,
-  Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, AlertCircle, Loader2, UserCog, Building2,
+  Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, AlertCircle, Loader2, Building2,
   Trash2, Pencil, CheckCircle2, Clock3, CreditCard, UserPlus, Download
 } from "lucide-react";
 
