@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   LayoutDashboard, Users, Target, Handshake, Package, Wallet, BarChart3,
   Settings, Search, Bell, Plus, ArrowUpRight, Menu, X, LogOut, ShieldCheck,
-  Trash2, Pencil, CheckCircle2, Clock3, CreditCard, UserPlus, Building2
+  Trash2, Pencil, CheckCircle2, Clock3, CreditCard, UserPlus, Building2, Download
 } from "lucide-react";
 
 type Item = { id:number; name:string; detail:string; status?:string; amount?:number };
@@ -16,28 +16,11 @@ const nav = [
 ] as const;
 
 const initialData: Record<string, Item[]> = {
-  Clients: [
-    {id:1,name:"Hôtel Ledger",detail:"contact@ledger.example",status:"Actif"},
-    {id:2,name:"La Palmeraie",detail:"+236 70 00 00 00",status:"Actif"},
-    {id:3,name:"École Excellence",detail:"Bangui",status:"Actif"},
-  ],
-  Prospects: [
-    {id:1,name:"Clinique Centre",detail:"À rappeler demain",status:"Négociation"},
-    {id:2,name:"Supermarché Central",detail:"Premier contact",status:"Contacté"},
-    {id:3,name:"Transport Express",detail:"Nouveau prospect",status:"Nouveau"},
-  ],
-  Partenaires: [
-    {id:1,name:"Partenaire A",detail:"Commercial",status:"Actif"},
-    {id:2,name:"Partenaire B",detail:"Technologie",status:"Actif"},
-  ],
-  Produits: [
-    {id:1,name:"Pack Standard",detail:"Gestion clients",status:"Disponible"},
-    {id:2,name:"Pack Premium",detail:"Gestion complète",status:"Disponible"},
-  ],
-  Paiements: [
-    {id:1,name:"Hôtel Ledger",detail:"18/09/2026",status:"Confirmé",amount:25000},
-    {id:2,name:"La Palmeraie",detail:"17/09/2026",status:"En attente",amount:10000},
-  ],
+  Clients: [],
+  Prospects: [],
+  Partenaires: [],
+  Produits: [],
+  Paiements: [],
 };
 
 export default function Home() {
@@ -62,12 +45,8 @@ export default function Home() {
   const [data,setData] = useState(initialData);
   const [modal,setModal] = useState(false);
   const [name,setName] = useState("");
-  const [activity,setActivity] = useState([
-    {id:1,title:"Nouveau client ajouté",detail:"Hôtel Ledger",time:"Il y a 12 min",Icon:UserPlus},
-    {id:2,title:"Prospect déplacé",detail:"Restaurant La Palmeraie",time:"Il y a 38 min",Icon:Target},
-    {id:3,title:"Paiement enregistré",detail:"25 000 FCFA",time:"Il y a 1 h",Icon:CreditCard},
-    {id:4,title:"Produit ajouté",detail:"Pack Premium",time:"Il y a 2 h",Icon:Package},
-  ]);
+  const [activity,setActivity] = useState<any[]>([]);
+  const [notificationsOpen,setNotificationsOpen] = useState(false);
 
   const rows = data[active] || [];
   const filtered = useMemo(() => rows.filter(x =>
@@ -86,6 +65,18 @@ export default function Home() {
   }
   function removeItem(id:number) {
     setData(d => ({...d,[active]:d[active].filter(x=>x.id!==id)}));
+  }
+  function exportData() {
+    const csv = [["Nom","Détail","Statut","Montant"], ...rows.map(x=>[
+      x.name, x.detail, x.status || "", x.amount !== undefined ? String(x.amount) : ""
+    ])].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dataflow-${active.toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   if (view === "landing") return <div className="landing">
@@ -141,7 +132,7 @@ export default function Home() {
       <header>
         <button className="hamb" onClick={()=>setMobile(true)}><Menu/></button>
         <div className="search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher dans DataFlow..."/></div>
-        <div className="headActions"><button className="icon"><Bell size={19}/><i/></button><div className="profile"><span className="avatar">BA</span><div><b>Administrateur</b><small>ADMIN</small></div></div></div>
+        <div className="headActions"><div style={{position:"relative"}}><button className="icon" onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={19}/>{activity.length>0&&<i/>}</button>{notificationsOpen&&<div style={{position:"absolute",right:0,top:"48px",width:"300px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:"14px",boxShadow:"0 18px 45px rgba(15,23,42,.12)",padding:"12px",zIndex:50}}><b style={{display:"block",marginBottom:"8px"}}>Notifications</b>{activity.length===0?<span style={{fontSize:"13px",color:"#64748b"}}>Aucune nouvelle notification.</span>:activity.slice(0,5).map((x:any)=><div key={x.id} style={{padding:"9px 0",borderTop:"1px solid #f1f5f9",fontSize:"13px"}}><b>{x.title}</b><span style={{display:"block",color:"#64748b"}}>{x.detail} · {x.time}</span></div>)}</div>}</div><div className="profile"><span className="avatar">BA</span><div><b>Administrateur</b><small>ADMIN</small></div></div></div>
       </header>
 
       <section className="content">
@@ -156,26 +147,27 @@ export default function Home() {
               ["Clients",data.Clients.length,String(data.Clients.length)+" client(s)",Users],
               ["Prospects",data.Prospects.length,String(data.Prospects.length)+" prospect(s)",Target],
               ["Partenaires",data.Partenaires.length,String(data.Partenaires.length)+" partenaire(s)",Handshake],
-              ["Produits",data.Produits.length,String(data.Produits.length)+" produit(s)",Package]
+              ["Produits",data.Produits.length,String(data.Produits.length)+" produit(s)",Package],
+              ["Chiffre d'affaires",data.Paiements.reduce((sum,x)=>sum+(x.amount||0),0).toLocaleString("fr-FR")+" FCFA","Paiements enregistrés",Wallet]
             ].map(([t,v,s,Icon]:any)=><div className="card" key={t}><div className="cardTop"><span>{t}</span><span className="cardIcon"><Icon size={19}/></span></div><strong>{v}</strong><p><span className="green">{s}</span></p></div>)}
           </div>
           <div className="grid">
             <div className="panel"><div className="panelHead"><div><h2>Activité récente</h2><p>Dernières actions de votre espace</p></div></div>
-              {activity.map((x:any)=><div className="row" key={x.id}><div className="dot"><x.Icon size={14}/></div><div><b>{x.title}</b><span>{x.detail}</span></div><time>{x.time}</time></div>)}
+              {activity.length ? activity.map((x:any)=><div className="row" key={x.id}><div className="dot"><x.Icon size={14}/></div><div><b>{x.title}</b><span>{x.detail}</span></div><time>{x.time}</time></div>) : <div className="emptyInline">Aucune activité pour le moment. Les actions de votre entreprise apparaîtront ici.</div>}
             </div>
             <div className="panel"><div className="panelHead"><div><h2>Suivi commercial</h2><p>Pipeline prospects</p></div></div><div className="bars">{[["Nouveaux",28,"80%"],["Contactés",19,"55%"],["En négociation",11,"38%"],["Convertis",6,"22%"]].map(x=><div key={x[0] as string}><span>{x[0]}</span><b>{x[1]}</b><em style={{width:x[2] as string}}/></div>)}</div></div>
           </div>
         </>}
 
         {["Clients","Prospects","Partenaires","Produits","Paiements"].includes(active) && <div className="panel tablePanel">
-          <div className="panelHead"><div><h2>{active}</h2><p>{filtered.length} élément(s) affiché(s)</p></div><span className="miniBadge"><CheckCircle2 size={13}/> Espace isolé</span></div>
+          <div className="panelHead"><div><h2>{active}</h2><p>{filtered.length} élément(s) affiché(s)</p></div><div style={{display:"flex",gap:"8px",alignItems:"center"}}><button className="secondary" onClick={exportData} disabled={!rows.length}><Download size={15}/>Exporter CSV</button><span className="miniBadge"><CheckCircle2 size={13}/> Espace isolé</span></div></div>
           <div className="table">
             {filtered.map(x=><div className="tableRow" key={x.id}><div className="entityIcon">{active==="Clients"?<Users size={16}/>:active==="Prospects"?<Target size={16}/>:active==="Partenaires"?<Handshake size={16}/>:active==="Produits"?<Package size={16}/>:<CreditCard size={16}/>}</div><div className="entityMain"><b>{x.name}</b><span>{x.detail}</span></div>{x.amount!==undefined&&<strong>{x.amount.toLocaleString("fr-FR")} FCFA</strong>}<span className="status">{x.status}</span><button className="iconBtn"><Pencil size={15}/></button><button className="iconBtn danger" onClick={()=>removeItem(x.id)}><Trash2 size={15}/></button></div>)}
             {!filtered.length && <div className="emptyInline">Aucun résultat.</div>}
           </div>
         </div>}
 
-        {active==="Statistiques" && <div className="statsGrid"><div className="panel statBig"><p>CHIFFRE D'AFFAIRES</p><strong>145 000 FCFA</strong><span>+18% sur la période</span><div className="fakeChart">{[35,48,42,65,54,78,70,92].map((h,i)=><i key={i} style={{height:h+"%"}}/>)}</div></div><div className="panel statBig"><p>CONVERSION</p><strong>9,4%</strong><span>64 prospects · 6 convertis</span><div className="progress"><em style={{width:"62%"}}/></div></div></div>}
+        {active==="Statistiques" && <div className="statsGrid"><div className="panel statBig"><p>CHIFFRE D'AFFAIRES</p><strong>{data.Paiements.reduce((sum,x)=>sum+(x.amount||0),0).toLocaleString("fr-FR")} FCFA</strong><span>{data.Paiements.length} paiement(s) enregistré(s)</span><div className="fakeChart">{Array.from({length:8},(_,i)=>{const max=Math.max(...data.Paiements.map(x=>x.amount||0),1);const h=data.Paiements.length?Math.min(100,Math.round(((data.Paiements[i]?.amount||0)/max)*100)):0;return <i key={i} style={{height:h+"%"}}/>})}</div></div><div className="panel statBig"><p>CONVERSION</p><strong>{data.Prospects.length ? Math.round((data.Prospects.filter(x=>x.status==="Converti").length/data.Prospects.length)*1000)/10 : 0}%</strong><span>{data.Prospects.length} prospect(s) · {data.Prospects.filter(x=>x.status==="Converti").length} converti(s)</span><div className="progress"><em style={{width:(data.Prospects.length ? Math.min(100,(data.Prospects.filter(x=>x.status==="Converti").length/data.Prospects.length)*100):0)+"%"}}/></div></div></div>}
 
         {active==="Paramètres" && <div className="grid"><div className="panel"><div className="panelHead"><div><h2>Entreprise</h2><p>Informations de l'espace professionnel</p></div></div><div className="setting"><Building2 size={18}/><div><b>Mon entreprise</b><span>Espace professionnel</span></div></div><div className="setting"><ShieldCheck size={18}/><div><b>Sécurité</b><span>Les données sont séparées par espace.</span></div></div></div><div className="panel"><div className="panelHead"><div><h2>Rôles</h2><p>Permissions de l'équipe</p></div></div><div className="role"><b>ADMIN</b><span>Accès système complet</span></div><div className="role"><b>ADMINISTRATION</b><span>Accès administratif sans privilèges ADMIN</span></div><div className="role"><b>MEMBRE</b><span>Accès limité aux modules autorisés</span></div></div></div>}
 
