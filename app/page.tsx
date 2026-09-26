@@ -63,13 +63,15 @@ export default function Home() {
       setAuthEmail(data.user.email || "");
       const { data: membership } = await supabase
         .from("company_members")
-        .select("company_id, companies(name)")
+        .select("company_id, role_id, roles(name), companies(name)")
         .eq("user_id", data.user.id)
         .eq("status", "active")
         .limit(1)
         .maybeSingle();
       if (!mounted) return;
       if (membership) {
+        const role = Array.isArray(membership.roles) ? membership.roles[0] : membership.roles;
+        if (role?.name) setCurrentRole(role.name as AppRole);
         const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
         if (company?.name) setCompanyName(company.name);
         setView("dashboard");
@@ -95,7 +97,7 @@ export default function Home() {
           setAuthError("Compte créé. Vérifiez votre email pour confirmer votre compte, puis connectez-vous.");
           return;
         }
-        const { data: companyId, error: companyError } = await supabase.rpc("create_company_for_current_user", { p_company_name: authName.trim() });
+        const { error: companyError } = await supabase.rpc("create_company_for_current_user", { p_company_name: authName.trim() });
         if (companyError) throw companyError;
         setCompanyName(authName.trim());
         setAuthMode(null); setView("dashboard");
@@ -105,13 +107,15 @@ export default function Home() {
         if (!data.user) throw new Error("Connexion impossible.");
         const { data: membership, error: membershipError } = await supabase
           .from("company_members")
-          .select("company_id, companies(name)")
+          .select("company_id, role_id, roles(name), companies(name)")
           .eq("user_id", data.user.id)
           .eq("status", "active")
           .limit(1)
           .maybeSingle();
         if (membershipError) throw membershipError;
         if (!membership) throw new Error("Aucune entreprise active n'est associée à ce compte.");
+        const role = Array.isArray(membership.roles) ? membership.roles[0] : membership.roles;
+        if (role?.name) setCurrentRole(role.name as AppRole);
         const company = Array.isArray(membership.companies) ? membership.companies[0] : membership.companies;
         if (company?.name) setCompanyName(company.name);
         setAuthMode(null); setView("dashboard");
@@ -143,7 +147,7 @@ export default function Home() {
   const [compactMode,setCompactMode] = useState(false);
   const [twoFactor,setTwoFactor] = useState(false);
   const salesStages = ["Nouveau","Contacté","En négociation","Converti","Perdu"];
-  const [currentRole] = useState<AppRole>("ADMIN_ENTREPRISE");
+  const [currentRole,setCurrentRole] = useState<AppRole>("MEMBRE");
   const [members,setMembers] = useState<Member[]>([]);
   const [memberModal,setMemberModal] = useState(false);
   const [permissionMember,setPermissionMember] = useState<Member|null>(null);
