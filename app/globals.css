@@ -94,3 +94,27 @@
   .breadcrumbs{font-size:12px}
   header{gap:8px}
 }
+
+/* DataFlow landing motion */
+@keyframes dfHeroUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dfHeroFloat{0%,100%{transform:translateY(0) rotate(1deg)}50%{transform:translateY(-10px) rotate(1deg)}}
+@keyframes dfGlow{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:.65;transform:scale(1.08)}}
+@keyframes dfCardUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dfPulse{0%,100%{box-shadow:0 0 0 0 rgba(111,92,251,.12)}50%{box-shadow:0 0 0 8px rgba(111,92,251,0)}}
+.landingMain .hero{position:relative}
+.landingMain .hero::before{content:"";position:absolute;width:430px;height:430px;right:-120px;top:30px;border-radius:50%;background:radial-gradient(circle,rgba(111,92,251,.13),rgba(56,189,248,.07) 42%,transparent 70%);filter:blur(8px);pointer-events:none;animation:dfGlow 5s ease-in-out infinite}
+.landingMain .heroCopy{animation:dfHeroUp .7s ease-out both}
+.landingMain .heroVisual{position:relative;animation:dfHeroUp .8s .12s ease-out both}
+.landingMain .heroVisual::after{content:"";position:absolute;width:110px;height:110px;right:2%;top:2%;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.18),transparent 68%);filter:blur(2px);pointer-events:none;animation:dfGlow 4s ease-in-out infinite}
+.landingMain .dashWindow{position:relative;z-index:1;animation:dfHeroFloat 5s ease-in-out .8s infinite;box-shadow:0 25px 70px rgba(23,32,51,.10),0 0 45px rgba(111,92,251,.06)}
+.landingMain .heroPrimary,.landingMain .heroSecondary,.landingHeader .landingCta,.landingHeader .loginBtn{transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease}
+.landingMain .heroPrimary:hover,.landingHeader .landingCta:hover{transform:translateY(-2px);box-shadow:0 10px 25px rgba(23,32,51,.18)}
+.landingMain .heroSecondary:hover,.landingHeader .loginBtn:hover{transform:translateY(-1px)}
+.landingMain .pill{animation:dfPulse 3s ease-in-out infinite}
+.landingMain .featureCard{animation:dfCardUp .65s ease-out both;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.landingMain .featureCard:nth-child(1){animation-delay:.08s}.landingMain .featureCard:nth-child(2){animation-delay:.16s}.landingMain .featureCard:nth-child(3){animation-delay:.24s}.landingMain .featureCard:nth-child(4){animation-delay:.32s}
+.landingMain .featureCard:hover{transform:translateY(-5px);box-shadow:0 14px 35px rgba(23,32,51,.09);border-color:#d9dff0}
+.landingMain .steps>div{animation:dfCardUp .65s ease-out both}
+.landingMain .steps>div:nth-child(1){animation-delay:.08s}.landingMain .steps>div:nth-child(2){animation-delay:.18s}.landingMain .steps>div:nth-child(3){animation-delay:.28s}
+@media(max-width:900px){.landingMain .hero::before{width:300px;height:300px;right:-150px;top:80px}.landingMain .dashWindow{animation-duration:5.5s}}
+@media(prefers-reduced-motion:reduce){.landingMain *, .landingMain *::before, .landingMain *::after{animation:none!important;transition:none!important}}
